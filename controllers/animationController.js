@@ -19,7 +19,7 @@ exports.getAllAnimations = async (req, res) => {
 
 exports.createAnimation = async (req, res) => {
     try {
-        const { imageList = [] } = req.body;
+        const { name, imageList = [] } = req.body;
         const userId = req.user.uid; // Extract userId from the authenticated user
 
         // Validate input data
@@ -29,6 +29,7 @@ exports.createAnimation = async (req, res) => {
 
         // Create a new animation document
         const newAnimation = new Animation({
+            name,
             userId,
             imageList,
         });
@@ -51,7 +52,8 @@ exports.updateAnimation = async (req, res) => {
     try {
       const { id } = req.params;
       const uid = req.user.uid;
-      const { imageData } = req.body;  // base64 string
+      const { name, imageData } = req.body;  // base64 string
+
   
       if (!imageData) {
         return res.status(400).json({ success: false, message: "No imageData provided." });
@@ -88,6 +90,10 @@ exports.updateAnimation = async (req, res) => {
   
       // append to imageList and save
       animation.imageList.push(publicUrl);
+
+      if(name) {
+        animation.name = name;
+      }
       await animation.save();
   
       return res.status(200).json({ success: true, animation });
@@ -96,3 +102,26 @@ exports.updateAnimation = async (req, res) => {
       return res.status(500).json({ success: false, error: "Failed to update animation." });
     }
   };
+
+
+exports.deleteAnimation = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const uid = req.user.uid;
+
+        const animation = await Animation.findById(id);
+        if (!animation) {
+            return res.status(404).json({ success: false, message: "Animation not found." });
+        }
+        if (animation.userId !== uid) {
+            return res.status(403).json({ success: false, message: "Not authorized to delete this animation." });
+        }
+
+        await Animation.findByIdAndDelete(id);
+
+        return res.status(200).json({ success: true, message: "Animation deleted successfully." });
+    } catch (error) {
+        console.error("Error deleting animation:", error);
+        return res.status(500).json({ success: false, error: "Failed to delete animation." });
+    }
+}

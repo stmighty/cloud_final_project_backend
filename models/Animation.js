@@ -8,6 +8,10 @@ const AnimationSchema = new Schema(
       type: String,
       required: [true, "Please provide a user ID."],
     },
+    name: {
+        type: String,
+        default: "Untitled Animation",
+    },
     imageList: {
       type: [String],     // mongoose list of string to the firebase storage URL.
       default: []
