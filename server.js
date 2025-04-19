@@ -19,6 +19,9 @@ dotenv.config({ path: './config/config.env' });
 // Connect to DB
 connectDB();
 
+// Import routes
+const animationRoute = require("./routes/animationRoute");
+
 
 const PORT = process.env.PORT || 5050;
 
@@ -46,13 +49,15 @@ app.use(cookieParser()); // Parse cookies last
 
 
 
+// connect to route
+app.use("/api/v1/animations", animationRoute);
+
 // **Add the Hello World Route**
 app.get('/api/v1', (req, res) => {
     res.send('Hello Worlddd');
   });
 
 
-// connect to route
 
 
 // Only listen on local or non-Vercel environment
