@@ -1,5 +1,6 @@
 const Animation = require("../models/Animation");
 const AnimationReaction = require("../models/AnimationReaction");
+const TopLikedAnimation = require("../models/TopLikedAnimation");
 const { admin } = require("../config/firebaseAdmin"); // firebase-admin config
 
 exports.getAllAnimations = async (req, res) => {
@@ -229,3 +230,95 @@ exports.reactToAnimation = async (req, res) => {
     });
   }
 };
+
+exports.updateTopLikedAnimations = async (req, res) => {
+    try {
+        // Get top 8 most liked animations
+        const topAnimations = await AnimationReaction.aggregate([
+            { $match: { isLiked: true } },
+            { $group: { 
+                _id: "$animationId", 
+                likeCount: { $sum: 1 } 
+            }},
+            { $sort: { likeCount: -1 } },
+            { $limit: 8 }
+        ]);
+
+        // Get full animation details
+        const animationIds = topAnimations.map(a => a._id);
+        const animations = await Animation.find({ _id: { $in: animationIds } });
+
+        // Create the top liked animations document
+        const topLikedAnimations = await TopLikedAnimation.create({
+            animations: topAnimations.map(ta => ({
+                animationId: ta._id,
+                likeCount: ta.likeCount
+            }))
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Top liked animations updated successfully",
+            topLikedAnimations
+        });
+    } catch (error) {
+        console.error("Error updating top liked animations:", error);
+        return res.status(500).json({ 
+            success: false, 
+            error: "Failed to update top liked animations" 
+        });
+    }
+}
+
+exports.getTopLikedAnimations = async (req, res) => {
+    try {
+        const userId = req.user?.uid;
+
+        // Get the most recent top liked animations
+        const topLikedAnimations = await TopLikedAnimation.findOne()
+            .sort({ createdAt: -1 })
+            .populate('animations.animationId');
+
+        if (!topLikedAnimations) {
+            return res.status(404).json({
+                success: false,
+                message: "No top liked animations found"
+            });
+        }
+
+        // If user is logged in, get their reactions
+        let userReactions = {};
+        if (userId) {
+            const reactions = await AnimationReaction.find({ 
+                userId,
+                animationId: { $in: topLikedAnimations.animations.map(a => a.animationId) }
+            });
+            userReactions = reactions.reduce((acc, reaction) => {
+                acc[reaction.animationId.toString()] = reaction.isLiked;
+                return acc;
+            }, {});
+        }
+
+        // Enhance animations with user's like status
+        const enhancedAnimations = topLikedAnimations.animations.map(item => {
+            const animation = item.animationId.toObject();
+            return {
+                ...animation,
+                likeCount: item.likeCount,
+                isLiked: userId ? (userReactions[animation._id.toString()] === true) : undefined
+            };
+        });
+
+        return res.status(200).json({
+            success: true,
+            animations: enhancedAnimations,
+            count: enhancedAnimations.length
+        });
+    } catch (error) {
+        console.error("Error fetching top liked animations:", error);
+        return res.status(500).json({ 
+            success: false, 
+            error: "Failed to fetch top liked animations" 
+        });
+    }
+}
