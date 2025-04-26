@@ -14,7 +14,7 @@ Before you begin, ensure you have the following installed:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/stmighty/cloud_final_project.git
+git clone https://github.com/stmighty/cloud_final_project_backend.git
 cd cloud_final_project_backend
 ```
 
@@ -105,4 +105,4 @@ Feel free to submit issues and enhancement requests.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the ISC License.
